@@ -296,42 +296,6 @@
      >
      > 默认`on`，为了安全，最好设为`off`
 
-      
-
-   > gzip压缩功能设置
-
-   + `gzip`
-   + `gzip_min_length`
-   + `gzip_buffers`
-   + `gzip_http_version`
-   + `gzip_comp_level`
-   + `gzip_types`
-   + `gzip_vary`
-
-   > http_proxy 代理设置
-
-   + `client_max_body_size`
-
-   + `client_body_buffer_size`
-
-   + `proxy_connect_timeout`
-
-     > 
-
-   + `proxy_send_timeout`
-
-   + `proxy_read_timeout`
-
-   + `proxy_buffer_size`
-
-   + `proxy_buffers`
-
-   + `proxy_busy_buffers_size`
-
-   + `proxy_temp_file_write_size`
-
-   + `proxy_temp_path`
-
 4. server块
 
    > 虚拟机配置，1个server对应1个工程项目
@@ -386,21 +350,84 @@
      >
      >   如：请求路径为`index.html`，经过`nginx`被转发到`http://127.0.0.1:8080/index.html`
 
-   + `proxy_redirect`
-
    + `proxy_set_header`
 
-   + `proxy_next_upstream`
+     > + 功能：
+     >
+     >   允许重新定义或添加发往后端服务器的请求头。`value`可以包含文本、变量或者它们的组合。
+     >
+     >   原来有的，未设置的请求头原封不动传过去
+     >
+     >   如：`proxy_set_header Host host:$host;`
+     >
+     >   	`host:`就是文本，`$host`就是变量
+     >
+     > + 继承规则
+     >
+     >   当前块中没有使用`proxy_set_header`时，继承上一级中的`proxy_set_header`设置
+     >
+     >   当前块中只要使用了`proxy_set_header`，就与上一级中的`proxy_set_header`设置无关了
+     >
+     > + 默认设置
+     >
+     >   ```
+     >   proxy_set_header Host $proxy_host;
+     >   proxy_set_header Connection close;
+     >   ```
+     >
+     >   排除继承上一级设置的影响，当前块中即使使用了`proxy_set_header`，只要没有明确设置这两个默认设置的头，这两个默认设置就是生效的
+
+     常用变量：
+
+     + $host
+
+       nginx接收到的请求的host请求头
+
+     + $proxy_host
+
+       代理域名
+
+       `proxy_pass`的参数去掉`http://`部分得到的就是`$proxy_host`
+
+     + $connection
+
+       nginx接受到的请求的connection请求头
+
+     + $remote_addr
+
+       nginx接收到的请求的remote_addr
+
+       接收到的请求的`remote_addr`一定是上一级的ip，所以如果想在后端获取客户端真实IP，就必须在第1级nginx中将`remote_addr`设置到1个请求头中，并且后续nginx不可以更改该头，后端才能通过该请求头获取真正的客户端IP
+
+     + $proxy_add_x_forwarded_for
+
+             nginx接收到的请求的`X-Forwarded-For`请求头+`,`+接收到的请求的remote_addr
+
+       例：
+
+       	客户端发来的请求的`X-Forwarded-For`请求头一般为null，所以到第1个nginx后，该变量值为客户端的ip；到第2个nginx后，该变量值为`客户端IP,第1个nginxIP`
+
+     + $proxy_x_forwarded_for
+
+       nginx接收到的请求的`X-Forwarded-For`请求头
+
+       客户端发来的请求的`X-Forwarded-For`请求头一般为null，所以该变量值一般为null
+
+   + `underscores_in_headers`
+
+     > 功能：设置是否支持下划线
+     >
+     > 默认值：off
+
+     ```
+     underscores_in_headers on;
+     ```
 
    + `expires`
 
      > 用来指定静态文件的过期时间
      >
      > 如：`expires 20d`代表20天过期；`expires 2m`代表2个月过期
-
-   + `stub_status`
-
-   + `allow`
 
    + `deny`
 
@@ -424,11 +451,124 @@
 
 6. upstream块
 
-   > + 用于设置一系列的后端服务器，设置反向代理及后端服务器的负载均衡
+   > + 指定代理域名设置一系列的后端服务器，并负载均衡策略
+   >
+   >   + 代理域名：
+   >
+   >     就是给这个upstream起1个名字，在server块中可以通过`proxy_pass http://代理域名`将请求分发到这个`代理域名`代表的`upstream块`中的某一个后端服务器
+   >
+   >     但是这个`代理域名`决定了`$proxy_host`的值，所以一般这个`代理域名`要取名为真实的域名或根据需求起1个合理的`域名`
+   >
    > + 不会继承指令也不会被继承。它有自己的特殊指令，不需要在其他地方的应用。
 
-   + `ip_hash`
-   + `server`
+   例：
+
+   ```
+   upstream www.bymyself.club{
+   	server localhost:9000;
+   	server localhost:9001;
+   }
+   ```
+
+   > + 代理域名：`www.bymyself.club`
+   > + 站点：每个server就是1个站点
+
+   + 负载均衡5种策略
+
+     + 轮训
+
+       >  上例这种什么都不指定的，就是轮训
+       >
+       > 这也是默认策略
+       >
+       > 站点之间基本是1：1分发请求
+
+     + weight
+
+       > 指定weight分发请求，weight代表权重，权重越高的分发的请求越多
+       >
+       > 一般使用这种策略需要根据服务器性能配置权重
+
+       例：
+
+       ```
+       upstream www.bymyself.club{
+       	server localhost:9000 weight=1;
+       	server localhost:9001 weight=2;
+       }
+       ```
+
+     + iphash
+
+       > 每个请求按访问ip的hash结果分配，这样每个访客固定访问一个后端服务器，可以解决session不能跨服务器的问题。
+
+       例：
+
+       ```
+       upstream www.bymyself.club{
+       	ip_hash;
+       	server localhost:9000;
+       	server localhost:9001;
+       }
+       ```
+
+     + fair（第三方插件）
+
+       > 按后端服务器的响应时间来分配请求，响应时间短的优先分配。
+
+       ```
+       upstream www.bymyself.club{
+       	fair;
+       	server localhost:9000;
+       	server localhost:9001;
+       }
+       ```
+
+     + url_hash
+
+       > 按访问url的hash结果来分配请求，使每个url定向到同一个后端服务器，后端服务器为缓存服务器时比较有效。 在upstream中加入hash语句，hash_method是使用的hash算法。
+
+       ```
+       upstream www.bymyself.club{
+       	server localhost:9000;
+       	server localhost:9001;
+       	hash $request_uri;
+       	hash_method crc32;
+       }
+       ```
+
+   + 设备状态
+
+     > 在upstream中站点的后面可以指定设备状态
+
+     如：
+
+     ```
+     upstream www.bymyself.club{
+     	server localhost:9000 down;
+     	server localhost:9001;
+     }
+     ```
+
+     + down
+
+       当前server暂不参与负载
+
+     + weight
+
+       权重
+
+     + max_fails
+
+       允许请求失败的次数默认为1。当超过最大次数时，返回proxy_next_upstream 模块定义的错误
+
+     + fail_timeout
+
+       max_fails次失败后，暂停的时间。
+
+     + backup 
+
+       备用服务器, 其它所有的非backup机器down或者忙的时候，请求backup机器。所以这台机器压力会最轻。
 
 #### 3.3.3. 配置案例
 
@@ -451,6 +591,40 @@
 
 2. 后端项目配置
 
+   ```
+   server {
+       listen       80;
+       server_name  api.hs.show-my-screen.com;
+   
+       location / {
+            proxy_pass http://localhost:8080/;
+            proxy_set_header            Host $host;
+   		 proxy_set_header            X-real-ip $remote_addr;
+   		 proxy_set_header            X-Forwarded-For $proxy_add_x_forwarded_for;
+       }
+   }
+   ```
+
+3. 负载均衡配置
+
+   ```
+   upstream www.bymyself.club{
+   	server localhost:9000;
+   	server localhost:9001;
+   }
+   
+   server {
+       listen       80;
+       server_name  www.bymyself.club;
+   
+       location / {
+            proxy_pass http://www.bymyself.club;
+            proxy_set_header            Host $host;
+   		 proxy_set_header            X-real-ip $remote_addr;
+   		 proxy_set_header            X-Forwarded-For $proxy_add_x_forwarded_for;
+       }
+   }
+   ```
 
 
 
