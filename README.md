@@ -626,9 +626,68 @@
    }
    ```
 
+## 4. 添加模块
 
+> nginx支持添加第三方模块，如`fastdfs-nginx-module`
 
+### 安装nginx时添加模块
 
+> 前面安装`pcre`等模块过程不再赘述，这里直接从安装`nginx`这个一步开始讲
+
++ 上传解压
+
++ 添加模块
+
+  ```shell
+  $ cd nginx-1.14.0/
+  $ ./configure --add-module=/home/shuyan/fastdfs-nginx-module-1.20/src
+  ```
+
++ 编译安装
+
+  ```shell
+  $ make
+  $ make install
+  ```
+
+### 动态添加模块
+
+- 上传解压
+
+- configure
+
+  - 查看原`nginx`的`configure`参数
+
+    ```shell
+    $ /usr/local/nginx/sbin/nginx -V
+    nginx version: nginx/1.14.0
+    built by gcc 4.8.5 20150623 (Red Hat 4.8.5-28) (GCC) 
+    configure arguments: --add-module=/home/shuyan/fastdfs-nginx-module-1.20/src
+    ```
+
+  - 在原参数基础上修改进行新的配置
+
+    > 这里没有其他参数，所以看不出来效果，如果有其他参数，就需要把其他参数带上，在后面追加上要添加的模块即可
+
+    ```shell
+    $ cd nginx-1.14.0/
+    $ ./configure --add-module=/home/shuyan/fastdfs-nginx-module-1.20/src
+    ```
+
+- 编译
+
+  ```shell
+  $ make
+  ```
+
++ 复制编译结果文件
+
+  ```shell
+  $ cp /usr/local/nginx/sbin/nginx /usr/local/nginx/sbin/nginx.bak
+  $ cp ./objs/nginx /usr/local/nginx/sbin/
+  ```
+
++ 编译后模块文件可以删除，但是不建议删除，因为以后再次动态添加别的模块时会找不到之前添加的模块
 
 
 
