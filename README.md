@@ -87,6 +87,9 @@
    cd ..															#! 返回上级目录
    rm -rf pcre-8.40/													#! 删除解压的目录
    
+   #! 安装pcre-devel
+   yum install pcre-devel
+   
    #! 安装zlib
    wget http://zlib.net/zlib-1.2.11.tar.gz					  	#! 下载
    tar zxvf zlib-1.2.11.tar.gz					 			#! 解压
